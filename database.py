@@ -11,12 +11,6 @@ async def connect():
     # conn = await asyncpg.create_pool(dsn = "postgres://postgres:ZPWgpMN4hETqjXAV@207.244.244.19:4082/pterodactyl")
     print("Connection successful")
 
-    
-    #await conn.cursor.execute("INSERT INTO server_details VALUES (?, ?, ?, ?, ?)", )
-
-    # await conn.execute("DROP TABLE server_details")
-    # await conn.execute("DROP TABLE trigger_response")
-
     await conn.execute("""CREATE TABLE server_details(
             guild_id bigint,
             prefix text,
@@ -24,7 +18,6 @@ async def connect():
             adminroles text,
             cooldown float8
             )""")
-#     await conn.commit()
 
     await conn.execute("""CREATE TABLE trigger_response(
             guild_id bigint,
@@ -34,19 +27,15 @@ async def connect():
             user_id bigint,
             added_time float8
             )""")
+    
+    await conn.execute("""CREATE TABLE bump_lb(
+            guild_id bigint,
+            user_id bigint,
+            user_count bigint
+            )""")
 
     await conn.close()
-#     await conn.commit()
-
-
-
-#     await c.execute("""CREATE TABLE channel_triggered(
-#             guild_id int,
-#             channel_id int,
-#             last_triggered real,
-#             cooldown real
-#             )""")
-#     await conn.commit()
+    print("Done")
 
 #     await c.execute("""CREATE TABLE to_do(
 #             guild_id int,
@@ -56,8 +45,6 @@ async def connect():
 #             added_time real
 #             )""")
 #     await conn.commit()
-
-
 
 asyncio.run(connect())
     
