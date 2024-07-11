@@ -1,93 +1,63 @@
-import discord
-from discord.ext import commands
-import aiosqlite
-import asyncio
-import os
-from helpcmd import MyNewHelp
-# from confirm import Confirm
-import asyncpraw
-# from discord.commands import Option
-# import threading
+# import aiosqlite3
+import asyncio 
+import asyncpg
 
 
-async def dbconnect():
-    client.tlock = asyncio.Lock()
-    client.db = await aiosqlite.connect("./database.db")
-    client.dbc = await client.db.cursor()
-
-DEFAULT_PREFIX = ","
-default_cd = float(2)
-
-
-async def get_prefix(client: discord.Client, message: discord.Message):
-    if not message.guild:
-        return commands.when_mentioned_or(DEFAULT_PREFIX)(client,message)
-
-    async with client.tlock:
-        await client.dbc.execute("SELECT prefix FROM server_details WHERE guild_id=:id", {'id':message.guild.id})
-        prefix = await client.dbc.fetchall()
-
-    if len(prefix) == 0:
-        async with client.tlock:
-            await client.dbc.execute("INSERT INTO server_details VALUES (?, ?, ?, ?, ?, ?)", (message.guild.id, DEFAULT_PREFIX, "", "", default_cd, ""))
-            await client.db.commit()
-    else:
-        prefix = prefix[0][0]
+async def connect():
+#     conn = await aiosqlite3.connect("./database.db")
+#     c = await conn.cursor()
+    conn = await asyncpg.connect(dsn = "postgres://zkhimypylyksjl:c8814bf833b7fafa0c76a0f39d9145926e783ff24f78f94d5031344084846ab1@ec2-35-168-65-132.compute-1.amazonaws.com:5432/d3m54ukaiiqmf4")
     
-    return commands.when_mentioned_or(prefix)(client, message)
+    # conn = await asyncpg.create_pool(dsn = "postgres://postgres:ZPWgpMN4hETqjXAV@207.244.244.19:4082/pterodactyl")
+    print("Connection successful")
 
-client = commands.Bot(command_prefix = get_prefix)
-client.help_command = MyNewHelp()
-client.reddit = asyncpraw.Reddit(client_id = "hG6NFmSD1r4flaGeP0LkjQ",
-                     client_secret = "7tEaYqeX8PCHnf3AssPQB0m9z5fWBg",
-                     username = "DH_Bot",
-                     password = "DankHeaven@123",
-                     user_agent = "memebot")
-client.vc_act = {
-    # 'Watch Together': discord.EmbeddedActivity.youtube,
-    # 'Poker Night': discord.EmbeddedActivity.poker,
-    # 'Betrayal.io': discord.EmbeddedActivity.betrayal,
-    # 'Fishington.io': discord.EmbeddedActivity.fishing,
-    # 'Chess in the Park': discord.EmbeddedActivity.chess,
-    # Credits to RemyK888
-    'Watch Together': 880218394199220334,
-    'Poker Night': 755827207812677713,
-    'Betrayal.io': 773336526917861400,
-    'Fishington.io': 814288819477020702,
-    'Chess in the Park': 832012774040141894,
-    # Credits to awesomehet2124
-    # 'Letter Tile': 87986368656562179,
-    'Word Snack': 879863976006127627,
-    'Doodle Crew': 878067389634314250
-}
+    
+    #await conn.cursor.execute("INSERT INTO server_details VALUES (?, ?, ?, ?, ?)", )
 
-# @client.slash_command(guild_ids=[743063397062541372, 894530635631329290, 862972481140162580, 806762689883406366], description = "Start a Discord Embedded Activity")
-# async def vc(
-#     ctx,
-#     channel: Option(discord.abc.GuildChannel, "Choose a voice channel"),
-#     activity: Option(str, "Choose an activity", choices=["Watch Together", "Poker Night", "Betrayal.io", "Fishington.io", "Chess in the Park", "Word Snack", "Doodle Crew"])
-# ):
-#     if not channel.type == discord.ChannelType.voice:
-#         await ctx.respond(f"{channel} is not a voice channel. Please select only voice channels")
-#         return
-#     act_type = client.vc_act[activity]
-#     channel_invite = await channel.create_activity_invite(act_type)
-#     await ctx.respond(f"[Click to open {activity} in {channel}]({str(channel_invite)})")
+    # await conn.execute("DROP TABLE server_details")
+    # await conn.execute("DROP TABLE trigger_response")
 
-for filename in os.listdir("./Cogs"):
-    if filename.endswith(".py"):
-        try:
-            client.load_extension(f"Cogs.{filename[:-3]}")
-            print(f"-----------{filename[:-3]} Loaded-----------")
-        except:
-            raise
+    await conn.execute("""CREATE TABLE server_details(
+            guild_id bigint,
+            prefix text,
+            modroles text,
+            adminroles text,
+            cooldown float8
+            )""")
+#     await conn.commit()
 
-@client.event
-async def on_ready():
-    await client.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name=f"{DEFAULT_PREFIX}help"))
-    print("Logged in as {0.user}".format(client))
-    print("----------------------------")
+    await conn.execute("""CREATE TABLE trigger_response(
+            guild_id bigint,
+            trigger text,
+            response text,
+            type text,
+            user_id bigint,
+            added_time float8
+            )""")
 
-client.loop.create_task(dbconnect())
-client.run(os.envron['DISCORD_TOKEN'])
-asyncio.run(client.db.close())
+    await conn.close()
+#     await conn.commit()
+
+
+
+#     await c.execute("""CREATE TABLE channel_triggered(
+#             guild_id int,
+#             channel_id int,
+#             last_triggered real,
+#             cooldown real
+#             )""")
+#     await conn.commit()
+
+#     await c.execute("""CREATE TABLE to_do(
+#             guild_id int,
+#             to_do_id int,
+#             details text,
+#             status text,
+#             added_time real
+#             )""")
+#     await conn.commit()
+
+
+
+asyncio.run(connect())
+    

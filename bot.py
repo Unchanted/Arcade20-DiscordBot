@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
-import aiosqlite
+#import aiosqlite
+import asyncpg
 import asyncio
 import os
 from helpcmd import MyNewHelp
@@ -11,9 +12,7 @@ import asyncpraw
 
 
 async def dbconnect():
-    client.tlock = asyncio.Lock()
-    client.db = await aiosqlite.connect("./database.db")
-    client.dbc = await client.db.cursor()
+    client.dbp = await asyncpg.create_pool(dsn = os.environ['DATABASE_URL'])
 
 DEFAULT_PREFIX = ","
 default_cd = float(2)
@@ -22,27 +21,23 @@ default_cd = float(2)
 async def get_prefix(client: discord.Client, message: discord.Message):
     if not message.guild:
         return commands.when_mentioned_or(DEFAULT_PREFIX)(client,message)
+    async with client.dbp.acquire() as dbc:
+        prefix = await dbc.fetch("SELECT prefix FROM server_details WHERE guild_id=($1)", message.guild.id)
 
-    async with client.tlock:
-        await client.dbc.execute("SELECT prefix FROM server_details WHERE guild_id=:id", {'id':message.guild.id})
-        prefix = await client.dbc.fetchall()
-
-    if len(prefix) == 0:
-        async with client.tlock:
-            await client.dbc.execute("INSERT INTO server_details VALUES (?, ?, ?, ?, ?, ?)", (message.guild.id, DEFAULT_PREFIX, "", "", default_cd, ""))
-            await client.db.commit()
-        prefix = DEFAULT_PREFIX
-    else:
-        prefix = prefix[0][0]
+        if len(prefix) == 0:
+            await dbc.execute("INSERT INTO server_details VALUES ($1, $2, $3, $4, $5)", message.guild.id, DEFAULT_PREFIX, "", "", default_cd)
+            prefix = DEFAULT_PREFIX
+        else:
+            prefix = prefix[0][0]
     
     return commands.when_mentioned_or(prefix)(client, message)
 
 client = commands.Bot(command_prefix = get_prefix)
 client.help_command = MyNewHelp()
 client.reddit = asyncpraw.Reddit(client_id = "hG6NFmSD1r4flaGeP0LkjQ",
-                     client_secret = "7tEaYqeX8PCHnf3AssPQB0m9z5fWBg",
+                     client_secret = os.environ['RED_SECRET'],
                      username = "DH_Bot",
-                     password = "DankHeaven@123",
+                     password = os.environ['RED_PASS'],
                      user_agent = "memebot")
 client.vc_act = {
     # 'Watch Together': discord.EmbeddedActivity.youtube,
