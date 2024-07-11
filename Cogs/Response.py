@@ -34,18 +34,14 @@ class Response(commands.Cog):
     @commands.check
     async def adminrolefind(self, ctx):
         guild_id = ctx.guild.id
-        async with self.client.tlock:
-            self.client.dbc.execute("SELECT adminroles FROM server_details WHERE guild_id=:guild_id", {"guild_id":guild_id})
-            adminroles = self.client.dbc.fetchall()
+        adminroles = await self.client.dbp.fetch("SELECT adminroles FROM server_details WHERE guild_id=($1)", guild_id)
         adminroles = adminroles[0][0]
         return commands.has_any_role(adminroles)
 
-    @commands.check    
+    @commands.check
     async def modrolefind(self, ctx):
         guild_id = ctx.guild.id
-        async with self.client.tlock:
-            self.client.dbc.execute("SELECT modroles FROM server_details WHERE guild_id=:guild_id", {"guild_id":guild_id})
-            modroles = self.client.dbc.fetchall()
+        modroles = await self.client.dbp.fetch("SELECT modroles FROM server_details WHERE guild_id=($1)", guild_id)
         modroles = modroles[0][0]
         return commands.has_any_role(modroles)
 
@@ -62,9 +58,7 @@ class Response(commands.Cog):
         trigger = trigger.lower()
         trigger = re.sub("!", "", trigger)
         guild_id = ctx.guild.id
-        async with self.client.tlock:
-            await self.client.dbc.execute("SELECT * FROM trigger_response WHERE guild_id=:guild_id AND trigger=:trigger", {"guild_id":guild_id, "trigger":trigger})
-            details = await self.client.dbc.fetchall()
+        details = await self.client.dbp.fetch("SELECT * FROM trigger_response WHERE guild_id=($1) AND trigger=($2)", guild_id, trigger)
         if details:
             typ = details[0][3]
             res = details[0][2]
@@ -105,12 +99,6 @@ class Response(commands.Cog):
         trigger = trigger.lower()
         trigger = re.sub("!", "", trigger)
         typ = typ.lower()
-        # async with self.client.tlock:
-        #     await self.client.dbc.execute("SELECT * FROM trigger_response WHERE guild_id=:guild_id AND trigger=:trigger", {"guild_id":guild_id, "trigger":trigger})
-        #     details = await self.client.dbc.fetchall()
-        # if details:
-        #     await self.find(ctx, trigger)
-        #     return
 
         find_msg = await self.find_ar(ctx, trigger)
         if find_msg:
@@ -140,17 +128,13 @@ class Response(commands.Cog):
         if (typ in rea):
             try:
                 await ctx.message.add_reaction(res)
-                async with self.client.tlock:
-                    await self.client.dbc.execute("INSERT INTO trigger_response VALUES (?, ?, ?, ?, ?, ?)", (guild_id, trigger, res, "Reaction", ctx.author.id, time.time()))
-                    await self.client.db.commit()
+                await self.client.dbp.execute("INSERT INTO trigger_response VALUES ($1, $2, $3, $4, $5, $6)", guild_id, trigger, res, "Reaction", ctx.author.id, time.time())
             except discord.HTTPException:
                 await ctx.send("Make sure the bot can use that emoji")
                 return
 
         elif (typ in messa):
-            async with self.client.tlock:
-                await self.client.dbc.execute("INSERT INTO trigger_response VALUES (?, ?, ?, ?, ?, ?)", (guild_id, trigger, res, "Message", ctx.author.id, time.time()))
-                await self.client.db.commit()
+            await self.client.dbp.execute("INSERT INTO trigger_response VALUES ($1, $2, $3, $4, $5, $6)", guild_id, trigger, res, "Message", ctx.author.id, time.time())
         else:
             await ctx.send("Please enter a vaild Response Type...")
             return
@@ -196,9 +180,7 @@ class Response(commands.Cog):
         elif view.value == False:
             return
         
-        async with self.client.tlock:
-            await self.client.dbc.execute("DELETE FROM trigger_response WHERE guild_id=:guild_id AND trigger=:trigger", {"guild_id":guild_id, "trigger":trigger})
-            await self.client.db.commit()
+        await self.client.dbp.execute("DELETE FROM trigger_response WHERE guild_id=($1) AND trigger=($2)", guild_id, trigger)
         
         await ctx.send(f"Successfully deleted the trigger {trigger}")
 
@@ -208,9 +190,7 @@ class Response(commands.Cog):
     async def get_all(self, ctx: commands.Context):
         "Get all the Trigger, Responses and Types for this Server"
         guild_id = ctx.guild.id
-        async with self.client.tlock:
-            await self.client.dbc.execute("SELECT * FROM trigger_response WHERE guild_id=:guild_id", {"guild_id":guild_id})
-            rdata = await self.client.dbc.fetchall()
+        rdata = await self.client.dbp.fetch("SELECT * FROM trigger_response WHERE guild_id=($1)", guild_id)
         for i in rdata:
             j = list(i)
             tm = int(j[5])
@@ -231,9 +211,7 @@ class Response(commands.Cog):
     @commands.check_any(commands.has_permissions(administrator = True), adminrolefind)
     async def cooldown(self, ctx: commands.Context, cd: float):
         "Update the cooldown for Triggers"
-        async with self.client.tlock:
-            await self.client.dbc.execute("SELECT cooldown FROM server_details WHERE guild_id=:id", {'id':ctx.guild.id})
-            oldCd = await self.client.dbc.fetchall()
+        oldCd = await self.client.dbp.fetch("SELECT cooldown FROM server_details WHERE guild_id=($1)", ctx.guild.id)
         oldCd = oldCd[0][0]
         view = Confirm(author_id=ctx.author.id)
         confirm_msg = await ctx.message.reply(f"The existing cooldown is {oldCd}s \nDo you wish to update it to {cd}s?", view = view, mention_author = False)
@@ -245,9 +223,7 @@ class Response(commands.Cog):
         elif view.value == False:
             return
         self.client.g_cd[ctx.guild.id] = commands.CooldownMapping.from_cooldown(1, cd, commands.BucketType.channel)
-        async with self.client.tlock:
-            await self.client.dbc.execute("UPDATE server_details SET cooldown=:cooldown WHERE guild_id=:id", {'cooldown':cd, 'id':ctx.guild.id})
-            await self.client.db.commit()
+        await self.client.dbp.execute("UPDATE server_details SET cooldown=($1) WHERE guild_id=($2))", cd, ctx.guild.id)
         await ctx.send(f"Sucessfully updated the Trigger cooldown for this server to {cd}s")
 
 
@@ -259,14 +235,9 @@ class Response(commands.Cog):
         new_msg = message.content.lower()
         new_msg = re.sub("!", "", new_msg)
         retry_after = self.ratelimit_check(guild_id, message)
-
-        async with self.client.tlock:
-            await self.client.dbc.execute("SELECT * FROM trigger_response WHERE guild_id=:guild_id", {"guild_id":guild_id})
-            all_triggers = await self.client.dbc.fetchall()
-
         if retry_after is not None:
             return
-
+        all_triggers = await self.client.dbp.fetch("SELECT * FROM trigger_response WHERE guild_id=($1)", guild_id)
         for at1 in all_triggers:
             trigger = at1[1]
             res = re.search(trigger, new_msg)
@@ -282,14 +253,9 @@ class Response(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         self.client.g_cd = {}
-        async with self.client.tlock:
-            await self.client.dbc.execute("SELECT guild_id, cooldown FROM server_details")
-            cd_data = await self.client.dbc.fetchall()
+        cd_data = await self.client.dbp.fetch("SELECT guild_id, cooldown FROM server_details")
         for i in cd_data:
             self.client.g_cd[i[0]] = commands.CooldownMapping.from_cooldown(1, i[1], commands.BucketType.channel)
             
-
-    
-
 def setup(client: discord.Client):
     client.add_cog(Response(client))

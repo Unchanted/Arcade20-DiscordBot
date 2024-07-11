@@ -15,9 +15,9 @@ class Error_Handler(commands.Cog):
             await ctx.send(message, delete_after=(round(error.retry_after, 2)))
             return
         elif isinstance(error, commands.MissingPermissions):
-            message = f"You are do not the required permissions to run this command! You are missing `{error.missing_perms}` Perms"
-        elif isinstance(error, commands.MissingPermissions):
-            message = "You can't run this command!"
+            message = f"You do not the required permissions to run this command! You are missing `{error.missing_perms}` Perms"
+        # elif isinstance(error, commands.MissingPermissions):
+        #     message = "You can't run this command!"
         elif isinstance(error, commands.MissingRequiredArgument):
             message = "You entered less numer of Arguments, please use the command correctly!"
         elif isinstance(error, commands.UserInputError):

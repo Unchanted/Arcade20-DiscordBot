@@ -31,6 +31,7 @@ async def get_prefix(client: discord.Client, message: discord.Message):
         async with client.tlock:
             await client.dbc.execute("INSERT INTO server_details VALUES (?, ?, ?, ?, ?, ?)", (message.guild.id, DEFAULT_PREFIX, "", "", default_cd, ""))
             await client.db.commit()
+        prefix = DEFAULT_PREFIX
     else:
         prefix = prefix[0][0]
     
@@ -89,5 +90,5 @@ async def on_ready():
     print("----------------------------")
 
 client.loop.create_task(dbconnect())
-client.run("")
+client.run(os.environ['DISCORD_TOKEN'])
 asyncio.run(client.db.close())
