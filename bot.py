@@ -15,7 +15,8 @@ async def dbconnect():
     client.db = await aiosqlite.connect("./database.db")
     client.dbc = await client.db.cursor()
 
-DEFAULT_PREFIX = "," default_cd = float(2)
+DEFAULT_PREFIX = ","
+default_cd = float(2)
 
 
 async def get_prefix(client: discord.Client, message: discord.Message):
