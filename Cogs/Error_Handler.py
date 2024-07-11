@@ -22,13 +22,13 @@ class Error_Handler(commands.Cog):
         elif isinstance(error, commands.UserInputError):
             message = "Something about your input was wrong, please check your input and try again!"
         else:
-            # etb = traceback.format_exc()
-            # etb = sys.exc_info()[2]
-            etb = ''.join(traceback.format_exception(error, value=error, tb=error.__traceback__))
-            etb = "```py\n"+etb+"```"
-            await self.client.get_channel(908321353894096927).send(etb)
+            try:
+                etb = ''.join(traceback.format_exception(error, value=error, tb=error.__traceback__))
+                etb = "```py\n"+etb+"```"
+                await self.client.get_channel(908321353894096927).send(etb)
+            except:
+                pass
             raise error
-            
 
         await ctx.message.reply(message, mention_author = False)
 

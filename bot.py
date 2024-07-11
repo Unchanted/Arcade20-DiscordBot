@@ -9,23 +9,13 @@ import asyncpraw
 async def dbconnect():
     client.dbp = await asyncpg.create_pool(dsn = os.environ['DATABASE_URL'])
 
-DEFAULT_PREFIX = ","
-default_cd = float(2)
-
 async def get_prefix(client: discord.Client, message: discord.Message):
-    if not message.guild:
-        return commands.when_mentioned_or(DEFAULT_PREFIX)(client,message)
-    prefix = await client.dbp.fetch("SELECT prefix FROM server_details WHERE guild_id=($1)", message.guild.id)
-
-    if len(prefix) == 0:
-        await client.dbp.execute("INSERT INTO server_details VALUES ($1, $2, $3, $4, $5)", message.guild.id, DEFAULT_PREFIX, "", "", default_cd)
-        prefix = DEFAULT_PREFIX
-    else:
+    if message.guild:
+        prefix = await client.dbp.fetch("SELECT prefix FROM server_details WHERE guild_id=($1)", message.guild.id)
         prefix = prefix[0][0]
-    
-    return commands.when_mentioned_or(prefix)(client, message)
+        return commands.when_mentioned_or(prefix)(client, message)
 
-client = commands.Bot(command_prefix = get_prefix)
+client = commands.AutoShardedBot(command_prefix = get_prefix, case_insensitive = True, strip_after_prefix = True, intents = discord.Intents.all())
 client.help_command = MyNewHelp()
 client.reddit = asyncpraw.Reddit(client_id = "hG6NFmSD1r4flaGeP0LkjQ",
                      client_secret = os.environ['RED_SECRET'],
@@ -58,7 +48,7 @@ for filename in os.listdir("./Cogs"):
 
 @client.event
 async def on_ready():
-    await client.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name=f"{DEFAULT_PREFIX}help"))
+    await client.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name=f",help"))
     print("Logged in as {0.user}".format(client))
     print("----------------------------")
 

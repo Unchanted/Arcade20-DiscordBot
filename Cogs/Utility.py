@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 import re
+# from datetime import datetime
 
 class Utility(commands.Cog):
     def __init__(self, client: discord.Client):
@@ -23,10 +24,10 @@ class Utility(commands.Cog):
     async def bumplb(self, ctx: commands.Context):
         lb = dict()
         emdesc = str()
-        bump_history = await self.client.dbp.fetch("SELECT user_id,user_count FROM bump_lb WHERE guild_id=($1)", ctx.guild.id)
+        bump_history = await self.client.dbp.fetch("SELECT user_id,user_count FROM bump_lb WHERE guild_id=($1) ORDER BY user_count DESC LIMIT 20", ctx.guild.id)
         lb = dict(bump_history)
-        for key in lb:
-            emdesc = emdesc.join(["<@",key,">",": ", lb[key], "\n"])
+        for key, val in lb.items():
+            emdesc = f"{emdesc}<@{key}>: {val} \n"
 
         em = discord.Embed(title=f"__Bump Leaderboard for **{ctx.guild.name}**__", colour=discord.Colour.random())
 
@@ -41,21 +42,29 @@ class Utility(commands.Cog):
         
         eml = message.embeds
         em = eml[0]
-        bump_verify = re.search("Bump Done!", em.description)
+        bump_verify = re.search("Bump done!", em.description)
         if not bump_verify:
             return
 
         user_id = int(re.search("[0-9]+", em.description).group())
 
         user_count = await self.client.dbp.fetch("SELECT user_count FROM bump_lb WHERE guild_id=($1) AND user_id=($2)", message.guild.id, user_id)
-        user_count = int(user_count[0])+1
-        await self.client.dbp.execute("UPDATE TABLE bump_lb SET user_count=($1) WHERE guild_id=($2) AND user_id=($3)", user_count, message.guild.id, user_id)
+        
+        if not user_count:
+            await self.client.dbp.execute("INSERT INTO bump_lb VALUES ($1, $2, $3)", message.guild.id, user_id, 1)
+            return
+
+        user_count = int(user_count[0][0])+1
+        await self.client.dbp.execute("UPDATE bump_lb SET user_count=($1) WHERE guild_id=($2) AND user_id=($3)", user_count, message.guild.id, user_id)
 
     # @commands.Cog.listener()
-    # async def on_message_delete(self, message):
+    # async def on_message_delete(self, message: discord.Message):
     #     dellog = None
     #     async for entry in message.guild.audit_logs(limit = 1, action = discord.AuditLogAction.message_delete):
-    #         if entry.target.id == message.author.id:
+    #         if not float(datetime.timestamp(datetime.utcnow())-datetime.timestamp(entry.created_at)) <= 1.5:
+    #             continue
+
+    #         if entry.target.id == message.author.id and entry.extra.channel.id == message.channel.id:
     #             dellog = entry
     #             break
 
@@ -69,6 +78,14 @@ class Utility(commands.Cog):
     #     **Author:** <@{message.author.id}>""")
     #     em.set_author(name = message.author.display_name, icon_url = message.author.avatar.url)
     #     await message.channel.send(embed = em)
+
+    @commands.Cog.listener()
+    async def on_guild_join(self, guild: discord.Guild):
+        await self.client.dbp.execute("INSERT INTO server_details VALUES ($1, $2, $3, $4, $5)", guild.id, ",", "", "", float(2))
+
+    @commands.Cog.listener()
+    async def on_guild_remove(self, guild: discord.Guild):    
+        await self.client.dbp.execute("DELETE FROM server_details WHERE guild_id=($1)", guild.id)
 
 def setup(client: discord.Client):
     client.add_cog(Utility(client))

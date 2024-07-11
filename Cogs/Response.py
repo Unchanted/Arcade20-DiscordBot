@@ -1,10 +1,10 @@
 import csv
 import discord
 from discord.ext import commands
-# import asyncio
 import datetime
 import time
 import re
+from typing import Union
 
 from confirm import Confirm
 
@@ -52,13 +52,15 @@ class Response(commands.Cog):
         if ctx.invoked_subcommand is None:
             await ctx.message.reply("Please invoke a subcommand!")
 
-    async def find_ar(self, ctx, trigger: str):
+    async def find_ar(self, ctx, trigger: str, checker: bool = False) -> Union[bool, discord.Embed]:
         "Find Triggers added for this Server"
         trigger = trigger.lower()
         trigger = re.sub("!", "", trigger)
         guild_id = ctx.guild.id
         details = await self.client.dbp.fetch("SELECT * FROM trigger_response WHERE guild_id=($1) AND trigger=($2)", guild_id, trigger)
         if details:
+            if checker:
+                return True
             typ = details[0][3]
             res = details[0][2]
             added_by = details[0][4]
@@ -85,8 +87,8 @@ class Response(commands.Cog):
     @ar.command()
     @commands.check_any(commands.has_permissions(ban_members = True), modrolefind)
     async def find(self, ctx: commands.Context, trigger: str):
-        em = await self.find_ar(ctx, trigger)
-        await ctx.send(embed = em)
+        em = await self.find_ar(ctx, trigger, False)
+        await ctx.reply(embed = em)
 
 
     @ar.command()
@@ -99,23 +101,23 @@ class Response(commands.Cog):
         trigger = re.sub("!", "", trigger)
         typ = typ.lower()
 
-        find_msg = await self.find_ar(ctx, trigger)
+        find_msg = await self.find_ar(ctx, trigger, False)
         if find_msg:
-            await ctx.send("Trigger already added. Delete and readd if you wish to change.", embed = find_msg)
+            await ctx.replly("Trigger already added. Delete and readd if you wish to change.", embed = find_msg)
             return
 
         if trigger in bl_words:
-            await ctx.send("You entered a blacklisted trigger‼️")
+            await ctx.reply("You entered a blacklisted trigger‼️")
             return
 
         if res in bl_words:
-            await ctx.send("You entered a blacklisted response‼️")
+            await ctx.reply("You entered a blacklisted response‼️")
             return
 
         view = Confirm(author_id=ctx.author.id)
         confirm_msg = await ctx.send(f"Are you sure you want to add the trigger {trigger}? <a:AreYouSure:892060354492891226>", view=view)
         await view.wait()
-        await confirm_msg.edit(f"Are you sure you want to add the trigger {trigger}? <a:AreYouSure:892060354492891226>", view=view)
+        confirm_msg = await confirm_msg.edit(f"Are you sure you want to add the trigger {trigger}? <a:AreYouSure:892060354492891226>", view=view)
         
         if view.value is None:
             await ctx.channel.send("Timed out...")
@@ -129,13 +131,13 @@ class Response(commands.Cog):
                 await ctx.message.add_reaction(res)
                 await self.client.dbp.execute("INSERT INTO trigger_response VALUES ($1, $2, $3, $4, $5, $6)", guild_id, trigger, res, "Reaction", ctx.author.id, time.time())
             except discord.HTTPException:
-                await ctx.send("Make sure the bot can use that emoji")
+                await ctx.reply("Make sure the bot can use that emoji.")
                 return
 
         elif (typ in messa):
             await self.client.dbp.execute("INSERT INTO trigger_response VALUES ($1, $2, $3, $4, $5, $6)", guild_id, trigger, res, "Message", ctx.author.id, time.time())
         else:
-            await ctx.send("Please enter a vaild Response Type...")
+            await ctx.reply("Please enter a vaild Response Type...")
             return
 
         em = discord.Embed(title = "Success!! <a:tick_yes:888740287386628168>", description = f"A response has been created for the trigger **{trigger}**", colour = discord.Color.dark_green())
@@ -150,7 +152,7 @@ class Response(commands.Cog):
         em.add_field(name="Added By:" , value=f"<@{added_by.id}> \n `<@{added_by.id}>`", inline=True)
         em.add_field(name="Added At:" , value=f"<t:{added_at}>", inline=True)
 
-        await ctx.send(embed = em)
+        await ctx.reply(embed = em)
 
         del guild_id
         del trigger
@@ -165,15 +167,15 @@ class Response(commands.Cog):
         trigger = trigger.lower()
         trigger = re.sub("!", "", trigger)
         
-        find_msg = await self.find(ctx, trigger)
+        find_msg = await self.find_ar(ctx, trigger)
         if not find_msg:
             return
         view = Confirm(author_id=ctx.author.id)
-        view_msg: discord.Message = await find_msg.reply("Do you wish to delete this trigger?", view=view, mention_author = False)
+        view_msg: discord.Message = await ctx.reply("Do you wish to delete this trigger?", view=view, mention_author = True, embed = find_msg)
         await view.wait()
         await view_msg.edit("Do you wish to delete this trigger?", view=view)
         if view.value is None:
-            await ctx.channel.send("Timed out...")
+            await view_msg.edit("Do you wish to delete this trigger?\n\n Timed Out...")
             return
 
         elif view.value == False:
@@ -181,7 +183,7 @@ class Response(commands.Cog):
         
         await self.client.dbp.execute("DELETE FROM trigger_response WHERE guild_id=($1) AND trigger=($2)", guild_id, trigger)
         
-        await ctx.send(f"Successfully deleted the trigger {trigger}")
+        await view_msg.edit(f"Do you wish to delete this trigger?\n\nSuccessfully deleted the trigger {trigger}", view=None)
 
     @ar.command()
     @commands.check_any(commands.has_permissions(administrator = True), adminrolefind)
@@ -213,7 +215,7 @@ class Response(commands.Cog):
         oldCd = await self.client.dbp.fetch("SELECT cooldown FROM server_details WHERE guild_id=($1)", ctx.guild.id)
         oldCd = oldCd[0][0]
         view = Confirm(author_id=ctx.author.id)
-        confirm_msg = await ctx.message.reply(f"The existing cooldown is {oldCd}s \nDo you wish to update it to {cd}s?", view = view, mention_author = False)
+        confirm_msg = await ctx.message.reply(f"The existing cooldown is {oldCd}s \nDo you wish to update it to {cd}s?", view = view, mention_author = True)
         await view.wait()
         await confirm_msg.edit(f"The existing cooldown is {oldCd}s \nDo you wish to update it to {cd}s?", view = view)
         if view.value is None:

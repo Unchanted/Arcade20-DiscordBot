@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from confirm import Confirm
 
-class Misc(commands.Cog):
+class Config(commands.Cog):
     def __init__(self, client: discord.Client):
         self.client = client
 
@@ -79,4 +79,4 @@ class Misc(commands.Cog):
         await ctx.send(f"Prefix successfully updated to `{newPrefix}`")
 
 def setup(client: discord.Client):
-    client.add_cog(Misc(client))
+    client.add_cog(Config(client))

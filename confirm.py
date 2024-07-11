@@ -8,11 +8,8 @@ class Confirm(discord.ui.View):
         self.value = None
         self.author_id = author_id
 
-    @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green)
+    @discord.ui.button(label="Confirm", style=discord.ButtonStyle.blurple)
     async def confirm(self, button: discord.ui.Button, interaction: discord.Interaction):
-        # if ctx.author != interaction.user:
-        #     await interaction.response.send_message("You aren't authorised", ephemeral=True)
-        #     return
         if interaction.user.id != self.author_id:
             await interaction.response.send_message("Your are not authorised to do this.", ephemeral=True)
         else:
@@ -24,9 +21,6 @@ class Confirm(discord.ui.View):
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def cancel(self, button: discord.ui.Button, interaction: discord.Interaction):
-        # if ctx.author != interaction.user:
-        #     await interaction.response.send_message("You aren't authorised", ephemeral=True)
-        #     return
         if interaction.user.id != self.author_id:
             await interaction.response.send_message("Your are not authorised to do this.", ephemeral=True)
         else:

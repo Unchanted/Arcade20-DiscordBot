@@ -25,7 +25,6 @@ class Reddit(commands.Cog):
 
         self.all_memes = self.new_memes
         self.new_memes = []
-        print("Got Memes")
 
         del hot
         del new
@@ -73,10 +72,8 @@ class Reddit(commands.Cog):
         async for submission in rising:
             self.new_animals.append(submission)
 
-
         self.all_animals = self.new_animals
         self.new_animals = []
-        print("Got Floof")
 
         del hot
         del new
@@ -109,7 +106,7 @@ class Reddit(commands.Cog):
 
 
     @commands.command()
-    @commands.cooldown(1, 10, commands.BucketType.user)
+    @commands.cooldown(1, 15, commands.BucketType.user)
     async def reddit(self, ctx: commands.Context, subname: str, sorttype: str = "hot"):
         subreddit = await self.client.reddit.subreddit(subname)
         sorttype = sorttype.lower()
@@ -128,8 +125,9 @@ class Reddit(commands.Cog):
         async for submission in subs:
             if submission.over_18 != True and ctx.channel.is_nsfw() != False:
                 await ctx.send("That post turned out to be NSFW 😳 \n Mark this channel as NSFW to bypass this")
+                return
 
-            else:
+            if submission.url.startswith("https://i.redd.it/"):
                 link = "https://www.reddit.com"+submission.permalink
                 em = discord.Embed(title = submission.title, url = link, colour = discord.Colour.random())
                 em.set_image(url = submission.url)
@@ -137,6 +135,9 @@ class Reddit(commands.Cog):
                 await ctx.send(embed = em)
                 del em
                 del link
+            
+            else:
+                await ctx.send(f"https://www.reddit.com{submission.permalink}")
         
         del sorttype
         del subreddit
@@ -145,7 +146,9 @@ class Reddit(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         self.fetch_memes.start()
+        print("Getting Memes...")
         self.fetch_animals.start()
+        print("Getting Floof...")
 
 
 
