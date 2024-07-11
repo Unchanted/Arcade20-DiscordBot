@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+import traceback
 
 class Error_Handler(commands.Cog):
     def __init__(self,client: discord.Client):
@@ -16,15 +17,16 @@ class Error_Handler(commands.Cog):
             return
         elif isinstance(error, commands.MissingPermissions):
             message = f"You do not the required permissions to run this command! You are missing `{error.missing_perms}` Perms"
-        # elif isinstance(error, commands.MissingPermissions):
-        #     message = "You can't run this command!"
         elif isinstance(error, commands.MissingRequiredArgument):
             message = "You entered less numer of Arguments, please use the command correctly!"
         elif isinstance(error, commands.UserInputError):
             message = "Something about your input was wrong, please check your input and try again!"
         else:
-            message = "Oh no! Something went wrong while running the command!"
-            await ctx.send(message)
+            # etb = traceback.format_exc()
+            # etb = sys.exc_info()[2]
+            etb = ''.join(traceback.format_exception(error, value=error, tb=error.__traceback__))
+            etb = "```py\n"+etb+"```"
+            await self.client.get_channel(908321353894096927).send(etb)
             raise error
             
 

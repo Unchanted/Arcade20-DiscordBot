@@ -1,6 +1,6 @@
 import csv
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 # import asyncio
 import datetime
 import time
@@ -19,7 +19,6 @@ class Response(commands.Cog):
     def __init__(self, client):
         self.client = client
         self.client.g_cd = {}
-        # self._cd = commands.CooldownMapping.from_cooldown(1, 3, commands.BucketType.channel)
 
     def ratelimit_check(self, guild_id: int, message):
         """Returns the ratelimit left"""
