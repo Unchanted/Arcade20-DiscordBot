@@ -5,9 +5,17 @@ import asyncio
 import os
 from helpcmd import MyNewHelp
 import asyncpraw
+from dotenv import load_dotenv
+import heroku3
+
+load_dotenv()
+conn = heroku3.from_key(os.environ['HEROKU_API_KEY'])
+app = conn.app("dh-basic-bot")
+config = app.config()
+my_dict = config.to_dict()
 
 async def dbconnect():
-    client.dbp = await asyncpg.create_pool(dsn = os.environ['DATABASE_URL'])
+    client.dbp = await asyncpg.create_pool(dsn = my_dict["DATABASE_URL"])
 
 async def get_prefix(client: discord.Client, message: discord.Message):
     if message.guild:
@@ -18,9 +26,9 @@ async def get_prefix(client: discord.Client, message: discord.Message):
 client = commands.AutoShardedBot(command_prefix = get_prefix, case_insensitive = True, strip_after_prefix = True, intents = discord.Intents.all())
 client.help_command = MyNewHelp()
 client.reddit = asyncpraw.Reddit(client_id = "hG6NFmSD1r4flaGeP0LkjQ",
-                     client_secret = os.environ['RED_SECRET'],
+                     client_secret = my_dict['RED_SECRET'],
                      username = "DH_Bot",
-                     password = os.environ['RED_PASS'],
+                     password = my_dict['RED_PASS'],
                      user_agent = "memebot")
 client.vc_act = {
     # Credits to RemyK888
@@ -53,5 +61,5 @@ async def on_ready():
     print("----------------------------")
 
 client.loop.create_task(dbconnect())
-client.run(os.environ['DISCORD_TOKEN'])
+client.run(my_dict['DISCORD_TOKEN'])
 asyncio.run(client.dbp.close())

@@ -13,7 +13,7 @@ class Confirm(discord.ui.View):
         if interaction.user.id != self.author_id:
             await interaction.response.send_message("Your are not authorised to do this.", ephemeral=True)
         else:
-            await interaction.response.send_message("Confirming this process...", ephemeral=False)
+            await interaction.response.send_message("Confirming this process...", ephemeral=True)
             self.value = True
             for child in self.children:
                 child.disabled=True
@@ -24,7 +24,7 @@ class Confirm(discord.ui.View):
         if interaction.user.id != self.author_id:
             await interaction.response.send_message("Your are not authorised to do this.", ephemeral=True)
         else:
-            await interaction.response.send_message("Cancelling this process...", ephemeral=False)
+            await interaction.response.send_message("Cancelling this process...", ephemeral=True)
             self.value = False
             for child in self.children:
                 child.disabled=True

@@ -103,7 +103,7 @@ class Response(commands.Cog):
 
         find_msg = await self.find_ar(ctx, trigger, False)
         if find_msg:
-            await ctx.replly("Trigger already added. Delete and readd if you wish to change.", embed = find_msg)
+            await ctx.reply("Trigger already added. Delete and readd if you wish to change.", embed = find_msg)
             return
 
         if trigger in bl_words:
@@ -115,42 +115,42 @@ class Response(commands.Cog):
             return
 
         view = Confirm(author_id=ctx.author.id)
-        confirm_msg = await ctx.send(f"Are you sure you want to add the trigger {trigger}? <a:AreYouSure:892060354492891226>", view=view)
+        confirm_msg = await ctx.reply(f"Are you sure you want to add the trigger {trigger}? <a:AreYouSure:892060354492891226>", view=view)
         await view.wait()
-        confirm_msg = await confirm_msg.edit(f"Are you sure you want to add the trigger {trigger}? <a:AreYouSure:892060354492891226>", view=view)
         
         if view.value is None:
-            await ctx.channel.send("Timed out...")
+            await confirm_msg.edit("Are you sure you want to add the trigger {trigger}? <a:AreYouSure:892060354492891226>\n\nTimed out...", view=view)
             return
 
-        elif view.value == False:
+        if view.value == False:
+            await confirm_msg.edit(f"Are you sure you want to add the trigger {trigger}? <a:AreYouSure:892060354492891226>\n\nCancelled", view=view)
             return
+
+        await confirm_msg.edit(f"Are you sure you want to add the trigger {trigger}? <a:AreYouSure:892060354492891226>\n\nConfirmed", view=view)
 
         if (typ in rea):
             try:
                 await ctx.message.add_reaction(res)
                 await self.client.dbp.execute("INSERT INTO trigger_response VALUES ($1, $2, $3, $4, $5, $6)", guild_id, trigger, res, "Reaction", ctx.author.id, time.time())
             except discord.HTTPException:
-                await ctx.reply("Make sure the bot can use that emoji.")
+                await confirm_msg.reply("Failed! ⚠️\nMake sure the bot can use that emoji.")
                 return
 
         elif (typ in messa):
             await self.client.dbp.execute("INSERT INTO trigger_response VALUES ($1, $2, $3, $4, $5, $6)", guild_id, trigger, res, "Message", ctx.author.id, time.time())
         else:
-            await ctx.reply("Please enter a vaild Response Type...")
+            await confirm_msg.reply("Failed! ⚠️\nPlease enter a vaild Response Type...")
             return
 
         em = discord.Embed(title = "Success!! <a:tick_yes:888740287386628168>", description = f"A response has been created for the trigger **{trigger}**", colour = discord.Color.dark_green())
-        added_by = ctx.author
-        added_at = round(time.time())
 
         em.set_author(name = ctx.author.display_name, icon_url = ctx.author.avatar.url)
         em.set_thumbnail(url=self.client.user.avatar.url)
         em.add_field(name="Trigger:" , value=f"`{trigger}`", inline=True)
         em.add_field(name="Type:" , value=f"`{typ}`", inline=True)
         em.add_field(name="Response:" , value=f"`{res}`", inline=False)
-        em.add_field(name="Added By:" , value=f"<@{added_by.id}> \n `<@{added_by.id}>`", inline=True)
-        em.add_field(name="Added At:" , value=f"<t:{added_at}>", inline=True)
+        em.add_field(name="Added By:" , value=f"<@{ctx.author.id}> \n `<@{ctx.author.id}>`", inline=True)
+        em.add_field(name="Added At:" , value=f"<t:{round(time.time())}>", inline=True)
 
         await ctx.reply(embed = em)
 
